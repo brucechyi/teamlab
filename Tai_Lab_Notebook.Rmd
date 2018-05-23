@@ -1,0 +1,89 @@
+---
+title: "ML LAB NoTEBOOK"
+output: html_notebook
+---
+
+###Libraries
+```{r}
+library(data.table)
+library(dplyr)
+library(tidyr)
+library(VIM)
+```
+
+###Cleaning & EDA
+```{r}
+orders <- fread("data/Orders.csv")
+
+# convert profit/sales to numeric type:
+orders$Profit = gsub(",",'',orders$Profit)
+orders$Profit = gsub("\\$",'',orders$Profit)
+orders$Sales = gsub(",",'',orders$Sales)
+orders$Sales = gsub("\\$",'',orders$Sales)
+orders$Profit = as.numeric(orders$Profit)
+orders$Sales = as.numeric(orders$Sales)
+#covers date columns to date type
+orders$Order.Date = as.Date(orders$Order.Date, "%m/%d/%y")
+orders$Ship.Date = as.Date(orders$Ship.Date, "%m/%d/%y")
+
+head(orders)
+summary(orders)
+
+```
+
+###1. Is there any seasonal trend of inventory in the company?
+###2. Is the seasonal trend the same for different categories?
+
+####Create a "Season" column
+
+```{r}
+getSeason <- function(DATES) {
+    WS <- as.Date("2012-12-15", format = "%Y-%m-%d") # Winter Solstice
+    SE <- as.Date("2012-3-15",  format = "%Y-%m-%d") # Spring Equinox
+    SS <- as.Date("2012-6-15",  format = "%Y-%m-%d") # Summer Solstice
+    FE <- as.Date("2012-9-15",  format = "%Y-%m-%d") # Fall Equinox
+
+    # Convert dates from any year to 2012 dates
+    d <- as.Date(strftime(DATES, format="2012-%m-%d"))
+
+    ifelse (d >= WS | d < SE, "Winter",
+      ifelse (d >= SE & d < SS, "Spring",
+        ifelse (d >= SS & d < FE, "Summer", "Fall")))
+}
+
+orders = orders %>% mutate(., Season = getSeason(Order.Date))
+```
+
+```{r}
+library(highcharter)
+library(forecast)
+
+
+quant_season = orders %>% select(., Quantity, Season) %>% group_by(., Season) %>% summarise(., Total.Season.Quantity= sum(Quantity))
+hchart(quant_season, "line", hcaes(x = Season, y = Total.Season.Quantity)) %>% hc_title(text = "Seasonal Inventory Counts") %>% hc_add_theme(hc_theme_flat())
+
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
